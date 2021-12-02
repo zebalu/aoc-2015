@@ -5,20 +5,18 @@ import java.io.InputStreamReader;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class TheIdealStockingStuffer {
 
-    private static final MessageDigest MD5;
-
-    static {
+    private static final ThreadLocal<MessageDigest> TL_MD5 = ThreadLocal.withInitial(() -> {
         try {
-            MD5 = MessageDigest.getInstance("MD5");
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Can not instantiate MD5", e);
+            return MessageDigest.getInstance("MD5");
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
         }
-    }
+    });
 
     private static final String KEY = readInput();
 
@@ -28,19 +26,16 @@ public class TheIdealStockingStuffer {
     }
 
     private static void firstPart() {
-        int i = 0;
-        while (!startsWith(KEY, i, "00000")) {
-            ++i;
-        }
-        System.out.println(i);
+        System.out.println(parallelFirstWithStart("00000"));
     }
 
     private static void secondPart() {
-        int i = 0;
-        while (!startsWith(KEY, i, "000000")) {
-            ++i;
-        }
-        System.out.println(i);
+        System.out.println(parallelFirstWithStart("000000"));
+    }
+
+    private static int parallelFirstWithStart(String start) {
+        return IntStream.iterate(0, i -> i + 1).parallel().filter(i -> startsWith(KEY, i, start)).findFirst()
+                .orElseThrow();
     }
 
     private static boolean startsWith(String key, int i, String target) {
@@ -48,7 +43,8 @@ public class TheIdealStockingStuffer {
     }
 
     private static String toMd5String(String combined) {
-        return String.format("%032x", new BigInteger(1, MD5.digest(combined.getBytes(StandardCharsets.UTF_8))));
+        return String.format("%032x",
+                new BigInteger(1, TL_MD5.get().digest(combined.getBytes(StandardCharsets.UTF_8))));
     }
 
     private static final String readInput() {
